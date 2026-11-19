@@ -133,8 +133,13 @@ body{font-family:var(--font);-webkit-font-smoothing:antialiased;text-rendering:g
    ========================================================= */
 .chrome{position:fixed;left:0;right:0;bottom:0;height:3px;z-index:900;background:rgba(31,34,64,.06)}
 .chrome .bar{height:100%;width:0;background:var(--verde);transition:width .9s var(--ease)}
-.ctl{position:fixed;right:18px;bottom:14px;z-index:901;display:flex;gap:8px;opacity:0;transition:opacity .4s}
-body:hover .ctl{opacity:.8}
+.ctl{position:fixed;right:18px;bottom:14px;z-index:901;display:flex;gap:8px;opacity:0;transition:opacity .4s,transform .5s var(--ease)}
+body:not(.fs):hover .ctl{opacity:.8}
+/* tela cheia: menu desce e só sobe com o mouse no canto inferior */
+body.fs .ctl{opacity:0;transform:translateY(90px);pointer-events:none}
+body.fs .ctl.show{opacity:.92;transform:none;pointer-events:auto}
+body.fs .hint{opacity:0!important}
+body.fs.idle,body.fs.idle *{cursor:none!important}
 .ctl button{font:500 12px var(--font);letter-spacing:.12em;text-transform:uppercase;color:var(--tinta);background:rgba(255,255,255,.85);border:1px solid var(--fio);padding:9px 12px;cursor:pointer}
 .ctl button:hover{background:var(--verde);color:#fff}
 .hint{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);z-index:901;font:500 12px var(--font);letter-spacing:.24em;text-transform:uppercase;color:var(--apoio);transition:opacity 1s;pointer-events:none}
@@ -274,6 +279,8 @@ body:hover .ctl{opacity:.8}
 .s-fim h2{position:absolute;left:128px;top:660px;font-size:110px}
 .s-fim .sub{position:absolute;left:128px;top:800px;font-size:26px;font-weight:300;color:#e7e9f4}
 .s-fim .logos{position:absolute;left:128px;top:930px}
+.inicio{position:absolute;right:128px;top:948px;font:500 18px var(--font);color:#fff;background:transparent;border:1px solid rgba(255,255,255,.35);padding:16px 26px;cursor:pointer;display:flex;gap:12px;align-items:center;transition:background-color .3s,border-color .3s}
+.inicio:hover{background:var(--verde);border-color:var(--verde)}
 .s-fim .ln2{position:absolute;left:128px;top:880px;width:96px;height:3px;background:var(--verde)}
 </style>
 </head>
@@ -458,6 +465,7 @@ body:hover .ctl{opacity:.8}
     <img src="assets/logo-invest.png" alt="Invest Paraná" style="height:44px">
     <img src="assets/logo-parana.png" alt="Governo do Estado do Paraná" style="height:58px">
   </div>
+  <button class="inicio" id="bInicio" data-a="fade" style="--d:1.6s">↺ Voltar ao início</button>
 </section>
 
 <div class="wipe" id="wipe" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
@@ -465,7 +473,7 @@ body:hover .ctl{opacity:.8}
 </div>
 
 <div class="chrome"><div class="bar" id="bar"></div></div>
-<div class="ctl"><button id="bPrev" aria-label="Slide anterior">←</button><button id="bNext" aria-label="Próximo slide">→</button><button id="bFs">Tela cheia</button></div>
+<div class="ctl"><button id="bHome" aria-label="Voltar ao início">⌂ Início</button><button id="bPrev" aria-label="Slide anterior">←</button><button id="bNext" aria-label="Próximo slide">→</button><button id="bFs">Tela cheia</button></div>
 <div class="hint" id="hint">← → navegar · F tela cheia</div>
 
 <script>
@@ -570,8 +578,21 @@ class Deck{
     let wl=0;addEventListener('wheel',e=>{const n=Date.now();if(n-wl<900||Math.abs(e.deltaY)<30)return;wl=n;e.deltaY>0?this.next():this.prev()},{passive:true});
     this.stage.addEventListener('click',e=>{if(e.target.closest('a,button'))return;const r=this.stage.getBoundingClientRect();(e.clientX-r.left)<r.width*.25?this.prev():this.next()});
     document.getElementById('bNext').onclick=()=>this.next();
+    document.getElementById('bHome').onclick=()=>this.go(0,-1);
+    document.getElementById('bInicio').onclick=e=>{e.stopPropagation();this.go(0,-1)};
     document.getElementById('bPrev').onclick=()=>this.prev();
     document.getElementById('bFs').onclick=()=>this.fs();
+    /* tela cheia: esconde o menu e o cursor; mostra o menu com o mouse perto da borda inferior */
+    const ctl=document.querySelector('.ctl'),fsBtn=document.getElementById('bFs');let idleT=null;
+    document.addEventListener('fullscreenchange',()=>{const on=!!document.fullscreenElement;document.body.classList.toggle('fs',on);ctl.classList.remove('show');fsBtn.textContent=on?'Sair da tela cheia':'Tela cheia';});
+    addEventListener('mousemove',e=>{
+      if(!document.body.classList.contains('fs'))return;
+      document.body.classList.remove('idle');clearTimeout(idleT);
+      const near=e.clientY>innerHeight-110||(ctl.classList.contains('show')&&e.target.closest('.ctl'));
+      ctl.classList.toggle('show',!!near);
+      if(!near)idleT=setTimeout(()=>document.body.classList.add('idle'),2200);
+    });
+    document.documentElement.addEventListener('mouseleave',()=>ctl.classList.remove('show'));
     addEventListener('hashchange',()=>{const i=this.fromHash();if(i!==this.cur)this.go(i)});
   }
   fit(){const f=Math.min(innerWidth/1920,innerHeight/1080);this.stage.style.transform=`translate(${(innerWidth-1920*f)/2}px,${(innerHeight-1080*f)/2}px) scale(${f})`}
